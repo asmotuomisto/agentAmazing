@@ -11,29 +11,21 @@
         #coinBonus { position: absolute; top: 40px; right: 10px; font-family: 'Press Start 2P', cursive; color: #ff0; font-size: 24px; display: none; }
         #gameWrapper { 
             display: grid;
-            grid-template-columns: 90px 800px 270px; /* JUMP | GAME | OTHER */
-            grid-template-rows: auto 70px 90px; /* HIGH-SCORE | SMALL-BUTTONS | SHOOT */
+            grid-template-columns: 800px 270px; /* GAME | OTHER */
+            grid-template-rows: auto 70px 90px; /* HIGH-SCORE | SMALL-BUTTONS | BUTTONS */
             gap: 10px;
             margin: 20px auto;
-            width: 1170px; /* 90 + 800 + 270 + 20 (gaps) */
+            width: 1080px; /* 800 + 270 + 10 (gap) */
             height: 470px; /* canvas height + padding */
         }
         
-        #jumpSegment {
-            grid-column: 1;
-            grid-row: 1 / 4;
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-        }
-        
         #gameSegment {
-            grid-column: 2;
+            grid-column: 1;
             grid-row: 1 / 4;
         }
         
         #highScoreSegment {
-            grid-column: 3;
+            grid-column: 2;
             grid-row: 1;
             background: #000;
             padding: 10px;
@@ -44,7 +36,7 @@
         }
         
         #smallButtonsSegment {
-            grid-column: 3;
+            grid-column: 2;
             grid-row: 2;
             display: flex;
             justify-content: space-between;
@@ -52,13 +44,14 @@
             padding: 10px;
         }
         
-        #shootSegment {
-            grid-column: 3;
+        #buttonsSegment {
+            grid-column: 2;
             grid-row: 3;
             display: flex;
             justify-content: flex-start;
             align-items: flex-end;
             padding: 10px 10px 0 10px;
+            gap: 10px;
         }
         
         #highScoreList { list-style: none; padding: 0; }
@@ -92,10 +85,6 @@
 </head>
 <body>
     <div id="gameWrapper">
-        <div id="jumpSegment">
-            <button class="gameButton" id="jumpButton">JUMP</button>
-        </div>
-        
         <div id="gameSegment">
             <div id="gameContainer">
                 <canvas id="gameCanvas" width="800" height="440"></canvas>
@@ -130,7 +119,8 @@
             <button class="gameButton smallButton" id="buttonG">G</button>
         </div>
         
-        <div id="shootSegment">
+        <div id="buttonsSegment">
+            <button class="gameButton" id="jumpButton">JUMP</button>
             <button class="gameButton" id="shootButton">SHOOT</button>
         </div>
     </div>
@@ -689,7 +679,6 @@
                     }
 
                     if (difficultyLevel >= 4 && !hasObstacle && Math.random() > 0.5 && !lastPlatformHadTriangle && !lastPlatformHadRectangle) {
-                        // For short platforms (150px), place enemy at right edge
                         if (width === 150) {
                             newPlatform.enemy = { x: width - 40 }; // 40 is enemy width
                         } else {
