@@ -230,7 +230,7 @@
                     player.jumping = true;
                     player.lastJumpTime = Date.now();
                 } else if (gameState === 'playing' && player.jumping && !player.doubleJump && 
-                           Date.now() - player.lastJumpTime < 300) {
+                           Date.now() - player.lastJumpTime < 500) {
                     player.speedY = -10;
                     player.doubleJump = true;
                 }
