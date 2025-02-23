@@ -10,107 +10,128 @@
         #lives { position: absolute; top: 10px; left: 10px; font-family: 'Press Start 2P', cursive; color: #ff0; font-size: 16px; }
         #coinBonus { position: absolute; top: 40px; right: 10px; font-family: 'Press Start 2P', cursive; color: #ff0; font-size: 24px; display: none; }
         #gameWrapper { 
-            display: flex; 
-            justify-content: center; 
-            align-items: flex-start; 
-            gap: 10px; 
-            margin: 20px auto; 
-            width: 1060px; 
-            position: relative; 
+            display: grid;
+            grid-template-columns: 90px 800px 270px; /* JUMP | GAME | OTHER */
+            grid-template-rows: auto 70px 90px; /* HIGH-SCORE | SMALL-BUTTONS | SHOOT */
+            gap: 10px;
+            margin: 20px auto;
+            width: 1170px; /* 90 + 800 + 270 + 20 (gaps) */
+            height: 470px; /* canvas height + padding */
         }
-        #highScoreContainer { 
-            width: 250px; 
-            background: #000; 
-            padding: 10px; 
-            font-family: 'Press Start 2P', cursive; 
-            color: #ff0; 
-            font-size: 14px; 
-            border: 2px solid #ff0; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 10px; 
+        
+        #jumpSegment {
+            grid-column: 1;
+            grid-row: 1 / 4;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
         }
+        
+        #gameSegment {
+            grid-column: 2;
+            grid-row: 1 / 4;
+        }
+        
+        #highScoreSegment {
+            grid-column: 3;
+            grid-row: 1;
+            background: #000;
+            padding: 10px;
+            font-family: 'Press Start 2P', cursive;
+            color: #ff0;
+            font-size: 14px;
+            border: 2px solid #ff0;
+        }
+        
+        #smallButtonsSegment {
+            grid-column: 3;
+            grid-row: 2;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px;
+        }
+        
+        #shootSegment {
+            grid-column: 3;
+            grid-row: 3;
+            display: flex;
+            justify-content: flex-start;
+            align-items: flex-end;
+            padding: 10px 10px 0 10px;
+        }
+        
         #highScoreList { list-style: none; padding: 0; }
         #highScoreList li { margin: 5px 0; }
         
         .gameButton { 
-            font-family: 'Press Start 2P', cursive; 
-            background: #000; 
-            color: #ff0; 
-            border: 2px solid #ff0; 
-            cursor: pointer; 
+            font-family: 'Press Start 2P', cursive;
+            background: #000;
+            color: #ff0;
+            border: 2px solid #ff0;
+            cursor: pointer;
         }
         .gameButton:hover { background: #222; }
         #jumpButton { 
-            width: 100px; 
-            height: 100px; 
-            font-size: 18px; 
-            position: absolute;
-            left: -110px; 
-            bottom: 0; 
+            width: 80px;
+            height: 80px;
+            font-size: 20px;
         }
         #shootButton { 
-            width: 100px; 
-            height: 100px; 
-            font-size: 18px; 
-            align: left;
-        }
-        #buttonContainer { 
-            display: flex; 
-            justify-content: space-between; 
-            gap: 10px; 
-            width: 100%;
+            width: 80px;
+            height: 80px;
+            font-size: 20px;
         }
         .smallButton { 
-            width: 50px; 
-            height: 50px; 
-            font-size: 14px; 
+            width: 50px;
+            height: 50px;
+            font-size: 14px;
             flex-grow: 1;
-        }
-        #rightSideButtons {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
         }
     </style>
 </head>
 <body>
     <div id="gameWrapper">
-        <div id="gameContainer">
-            <canvas id="gameCanvas" width="800" height="440"></canvas>
-            <div id="score">KOLIKOT: 0</div>
-            <div id="lives">ELÄMÄT: 3</div>
-            <div id="coinBonus">+1</div>
-            <audio id="backgroundMusic" loop>
-                <source src="https://www.dropbox.com/scl/fi/upcxw4uk264sf0qoednyh/rock_music.mp3?rlkey=av9766gj2vpvas4kzmyhkjc24&st=d545g0kq&dl=1" type="audio/mpeg">
-            </audio>
+        <div id="jumpSegment">
+            <button class="gameButton" id="jumpButton">JUMP</button>
         </div>
-        <button class="gameButton" id="jumpButton">JUMP</button>
-        <div id="highScoreContainer">
-            <div>
-                HIGH SCORE
-                <ul id="highScoreList">
-                    <li>1.</li>
-                    <li>2.</li>
-                    <li>3.</li>
-                    <li>4.</li>
-                    <li>5.</li>
-                    <li>6.</li>
-                    <li>7.</li>
-                    <li>8.</li>
-                    <li>9.</li>
-                    <li>10.</li>
-                </ul>
+        
+        <div id="gameSegment">
+            <div id="gameContainer">
+                <canvas id="gameCanvas" width="800" height="440"></canvas>
+                <div id="score">KOLIKOT: 0</div>
+                <div id="lives">ELÄMÄT: 3</div>
+                <div id="coinBonus">+1</div>
+                <audio id="backgroundMusic" loop>
+                    <source src="https://www.dropbox.com/scl/fi/upcxw4uk264sf0qoednyh/rock_music.mp3?rlkey=av9766gj2vpvas4kzmyhkjc24&st=d545g0kq&dl=1" type="audio/mpeg">
+                </audio>
             </div>
-            <div id="rightSideButtons">
-                <div id="buttonContainer">
-                    <button class="gameButton smallButton" id="button1">1</button>
-                    <button class="gameButton smallButton" id="button2">2</button>
-                    <button class="gameButton smallButton" id="buttonG">G</button>
-                </div>
-                <button class="gameButton" id="shootButton">SHOOT</button>
-            </div>
+        </div>
+        
+        <div id="highScoreSegment">
+            HIGH SCORE
+            <ul id="highScoreList">
+                <li>1.</li>
+                <li>2.</li>
+                <li>3.</li>
+                <li>4.</li>
+                <li>5.</li>
+                <li>6.</li>
+                <li>7.</li>
+                <li>8.</li>
+                <li>9.</li>
+                <li>10.</li>
+            </ul>
+        </div>
+        
+        <div id="smallButtonsSegment">
+            <button class="gameButton smallButton" id="button1">1</button>
+            <button class="gameButton smallButton" id="button2">2</button>
+            <button class="gameButton smallButton" id="buttonG">G</button>
+        </div>
+        
+        <div id="shootSegment">
+            <button class="gameButton" id="shootButton">SHOOT</button>
         </div>
     </div>
 
@@ -222,7 +243,6 @@
             ctx.fillText(`KOLIKOT = ${scoreElement.textContent.split(': ')[1]}`, 300, 140);
             ctx.font = "14px 'Press Start 2P'";
             ctx.fillText('PELAA UUDESTAAN: PRESS G', 200, 280);
-            ctx.fillText('LOPETA: ESC', 200, 300);
             ctx.font = "10px 'Press Start 2P'";
             ctx.fillText('MUSIC BY RHAPSODY (FREE MUSIC ARCHIVE)', 200, 400);
         }
