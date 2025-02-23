@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Name Selection</title>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" as="style" onload="this.rel='stylesheet'">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         body {
@@ -136,9 +137,14 @@
             }
         });
 
-        // Wait for fonts to load before drawing
-        document.fonts.ready.then(() => {
-            drawText();
+        // Ensure font is loaded and redraw
+        window.addEventListener('load', () => {
+            document.fonts.ready.then(() => {
+                drawText(); // Initial draw after font is ready
+            }).catch((err) => {
+                console.error('Font loading failed:', err);
+                drawText(); // Fallback draw if font loading fails
+            });
         });
     </script>
 </body>
