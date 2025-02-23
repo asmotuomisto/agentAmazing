@@ -92,7 +92,7 @@
                 submitButton.style.display = inputName.length >= 3 ? 'flex' : 'none';
             } else if (state === 'saved') {
                 ctx.textAlign = 'center';
-                const savedName = inputName || 'PLR1'; // Use inputName or default from selection
+                const savedName = inputName || 'PLR1';
                 ctx.fillText(`PLAYER NAME = ${savedName}`, 400, 200);
                 ctx.fillText('PRESS ENTER', 400, 280);
                 submitButton.style.display = 'none';
@@ -100,7 +100,7 @@
         }
 
         function saveName(name) {
-            inputName = name; // Store the name temporarily in inputName
+            inputName = name;
             state = 'saved';
             underscores = ['_', '_', '_', '_', '_'];
             drawText();
@@ -125,7 +125,6 @@
                     underscores[inputName.length - 1] = e.key.toUpperCase();
                 }
             } else if (state === 'saved' && e.code === 'Enter') {
-                // Redirect with username as query parameter
                 window.location.href = `pixel_jumper.html?username=${encodeURIComponent(inputName)}`;
             }
             drawText();
@@ -137,7 +136,10 @@
             }
         });
 
-        drawText();
+        // Wait for fonts to load before drawing
+        document.fonts.ready.then(() => {
+            drawText();
+        });
     </script>
 </body>
 </html>
