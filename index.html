@@ -689,7 +689,12 @@
                     }
 
                     if (difficultyLevel >= 4 && !hasObstacle && Math.random() > 0.5 && !lastPlatformHadTriangle && !lastPlatformHadRectangle) {
-                        newPlatform.enemy = { x: 40 + Math.random() * (width - 80) };
+                        // For short platforms (150px), place enemy at right edge
+                        if (width === 150) {
+                            newPlatform.enemy = { x: width - 40 }; // 40 is enemy width
+                        } else {
+                            newPlatform.enemy = { x: 40 + Math.random() * (width - 80) }; // Random position for longer platforms
+                        }
                         enemies.push({ x: newPlatform.x + newPlatform.enemy.x, y: newPlatform.y });
                         lastPlatformHadEnemy = true;
                     } else {
