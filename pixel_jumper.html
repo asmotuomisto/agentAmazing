@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pixel Jumper</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #000;
+        }
+        canvas { border: 1px solid black; background: black; }
+        #gameContainer { position: relative; width: 800px; margin: 0; }
+        #score { position: absolute; top: 10px; right: 10px; font-family: 'Press Start 2P', cursive; color: #ff0; font-size: 16px; }
+        #lives { position: absolute; top: 10px; left: 10px; font-family: 'Press Start 2P', cursive; color: #ff0; font-size: 16px; }
+        #coinBonus { position: absolute; top: 40px; right: 10px; font-family: 'Press Start 2P', cursive; color: #ff0; font-size: 24px; display: none; }
+        #gameWrapper { 
+            display: grid;
+            grid-template-columns: 800px 270px;
+            grid-template-rows: auto 70px 90px;
+            gap: 10px;
+            margin: 20px auto;
+            width: 1080px;
+            height: 470px;
+        }
+        #gameSegment { 
+            grid-column: 1; 
+            grid-row: 1 / 4; 
+            border: 2px solid #ff0; /* Yellow borders already present, including right border */
+        }
+        #highScoreSegment { 
+            grid-column: 2; 
+            grid-row: 1; 
+            background: #000; 
+            padding: 10px; 
+            font-family: 'Press Start 2P', cursive; 
+            color: #ff0; 
+            font-size: 14px; 
+            border: 2px solid #ff0; 
+        }
+        #smallButtonsSegment { 
+            grid-column: 2; 
+            grid-row: 2; 
+            display: flex; 
+            justify-content: space-between; 
+            gap: 10px; 
+            padding: 10px; 
+        }
+        #buttonsSegment { 
+            grid-column: 2; 
+            grid-row: 3; 
+            display: flex; 
+            justify-content: flex-start; 
+            align-items: flex-end; 
+            padding: 10px 10px 0 10px; 
+            gap: 10px; 
+        }
+        #highScoreList { list-style: none; padding: 0; }
+        #highScoreList li { margin: 5px 0; }
+        .gameButton { 
+            font-family: 'Press Start 2P', cursive; 
+            background: #000; 
+            color: #ff0; 
+            border: 2px solid #ff0; 
+            cursor: pointer; 
+        }
+        .gameButton:hover { background: #222; }
+        #jumpButton { width: 100px; height: 90px; font-size: 18px; }
+        #shootButton { width: 100px; height: 90px; font-size: 18px; }
+        .smallButton { width: 50px; height: 50px; font-size: 14px; flex-grow: 1; }
+    </style>
+</head>
+<body>
+    <div id="gameWrapper">
+        <div id="gameSegment">
+            <div id="gameContainer">
+                <canvas id="gameCanvas" width="794" height="440"></canvas>
+                <div id="score">KOLIKOT: 0</div>
+                <div id="lives">ELÄMÄT: 3</div>
+                <div id="coinBonus">+1</div>
+                <audio id="backgroundMusic" loop>
+                    <source src="https://www.dropbox.com/scl/fi/upcxw4uk264sf0qoednyh/rock_music.mp3?rlkey=av9766gj2vpvas4kzmyhkjc24&st=d545g0kq&dl=1" type="audio/mpeg">
+                </audio>
+            </div>
+        </div>
+        <div id="highScoreSegment">
+            HIGH SCORE
+            <ul id="highScoreList">
+                <li>1.</li><li>2.</li><li>3.</li><li>4.</li><li>5.</li>
+                <li>6.</li><li>7.</li><li>8.</li><li>9.</li><li>10.</li>
+            </ul>
+        </div>
+        <div id="smallButtonsSegment">
+            <button class="gameButton smallButton" id="button1">1</button>
+            <button class="gameButton smallButton" id="button2">2</button>
+            <button class="gameButton smallButton" id="buttonG">G</button>
+        </div>
+        <div id="buttonsSegment">
+            <button class="gameButton" id="jumpButton">JUMP</button>
+            <button class="gameButton" id="shootButton">SHOOT</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const livesElement = document.getElementById('lives');
+        const coinBonusElement = document.getElementById('coinBonus');
+        const highScoreList = document.getElementById('highScoreList');
+        const music = document.getElementById('backgroundMusic');
+
+        const player = { x: 20, y: 350, width: 40, height: 40, speedY: 0, jumping: false, doubleJump: false, lastJumpTime: 0, dead: false, deathType: null };
+        let lives = 3, gameSpeed = 3, gravity = 0.5;
+        let platforms = [], coins = [], bullets = [], enemies = [], arrows = [];
+        let gameState = 'waiting';
+        let countdown = 0;
+        let difficulty = 1, levelProgress = 0, levelCount = 0, coinAnimationTimer = 0, lavaTimer = 0;
+        let deathTimer = 0, levelChangeTimer = 0, shootTimer = 0, enemyHitTimer = 0, enemyHitX = 0, enemyShootTimer = 0;
+        const urlParams = new URLSearchParams(window.location.search);
+        let playerName = urlParams.get('username') || 'GUEST';
+        let highScores = JSON.parse(localStorage.getItem('highScores')) || [];
+        const HEIGHT_LEVELS = [350, 300, 250, 200];
+        const PLATFORM_LENGTHS = [150, 200, 250];
+        const BASE_GAPS = { 0: 70, 1: 68, 2: 66, 3: 63, '-1': 72, '-2': 75, '-3': 77, '-4': 79 };
+        const MAX_GAPS = { 0: 176, 1: 171, 2: 165, 3: 159, '-1': 182, '-2': 188, '-3': 193, '-4': 199 };
+        const LAVA_HEIGHT = 40;
+
+        function getGap(levelChange, difficulty) {
+            const base = BASE_GAPS[levelChange];
+            const max = MAX_GAPS[levelChange];
+            return base + (max - base) / 9 * (difficulty - 1);
+        }
+
+        function init() {
+            platforms = [{ x: 0, y: 350, width: 600, height: 50, type: 1, touched: false }];
+            coins = [];
+            bullets = [];
+            enemies = [];
+            arrows = [];
+            lives = 3;
+            difficulty = 1;
+            levelProgress = 0;
+            levelCount = 0;
+            coinAnimationTimer = 0;
+            lavaTimer = 0;
+            deathTimer = 0;
+            levelChangeTimer = 0;
+            shootTimer = 0;
+            enemyHitTimer = 0;
+            enemyShootTimer = 0;
+            player.x = 20;
+            player.y = 350;
+            player.speedY = 0;
+            player.jumping = false;
+            player.doubleJump = false;
+            player.dead = false;
+            player.deathType = null;
+            livesElement.textContent = `ELÄMÄT: ${lives}`;
+            scoreElement.textContent = `KOLIKOT: 0`;
+            music.pause();
+            music.currentTime = 0;
+            updateHighScoreDisplay();
+        }
+
+        function updateHighScoreDisplay() {
+            highScores.sort((a, b) => b.coins - a.coins);
+            const listItems = highScoreList.getElementsByTagName('li');
+            for (let i = 0; i < 10; i++) {
+                listItems[i].textContent = `${i + 1}. ${highScores[i] ? `${highScores[i].name}: ${highScores[i].coins}` : ''}`;
+            }
+        }
+
+        function saveHighScore() {
+            const coins = parseInt(scoreElement.textContent.split(': ')[1]);
+            highScores.push({ name: playerName, coins: coins });
+            highScores.sort((a, b) => b.coins - a.coins);
+            highScores = highScores.slice(0, 10);
+            localStorage.setItem('highScores', JSON.stringify(highScores));
+            updateHighScoreDisplay();
+        }
+
+        function drawGameOver() {
+            ctx.fillStyle = '#800';
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            ctx.fillStyle = 'black';
+            ctx.fillRect(player.x, player.y + 10, 8, 4);
+            ctx.fillRect(player.x + 8, player.y + 10, 14, 8);
+            ctx.fillRect(player.x + 22, player.y + 10, 3, 4);
+            ctx.fillRect(player.x + 25, player.y + 10, 14, 8);
+            ctx.fillRect(player.x + 15, player.y + 25, 15, 5);
+            ctx.fillStyle = '#800';
+            for (let i = 0; i < 5; i++) {
+                ctx.fillRect(player.x + 5 + i * 8, player.y - 3, 3, 3);
+            }
+            ctx.font = "20px 'Press Start 2P'";
+            ctx.fillStyle = '#ff0';
+            ctx.textAlign = 'center';
+            ctx.fillText(playerName, 400, 30);
+            ctx.textAlign = 'left';
+            ctx.fillText('PELI LOPPUI', 300, 60);
+            ctx.fillText(`TASOT = ${levelCount}`, 300, 100);
+            ctx.fillText(`KOLIKOT = ${scoreElement.textContent.split(': ')[1]}`, 300, 140);
+            ctx.font = "14px 'Press Start 2P'";
+            ctx.fillText('PELAA UUDESTAAN: PRESS G', 200, 280);
+            ctx.font = "10px 'Press Start 2P'";
+            ctx.fillText('MUSIC BY RHAPSODY (FREE MUSIC ARCHIVE)', 200, 400);
+        }
+
+        function simulateKeyPress(keyCode) {
+            const event = new KeyboardEvent('keydown', { code: keyCode });
+            document.dispatchEvent(event);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                if (gameState === 'waiting') {
+                    gameState = 'countdown';
+                    countdown = 180;
+                    music.play();
+                } else if (gameState === 'respawn' && deathTimer <= 0) {
+                    gameState = 'countdown';
+                    countdown = 180;
+                    music.play();
+                } else if (gameState === 'playing' && !player.jumping) {
+                    player.speedY = -12;
+                    player.jumping = true;
+                    player.lastJumpTime = Date.now();
+                } else if (gameState === 'playing' && player.jumping && !player.doubleJump && 
+                           Date.now() - player.lastJumpTime < 300) {
+                    player.speedY = -10;
+                    player.doubleJump = true;
+                }
+            } else if (e.code === 'KeyG' && gameState === 'gameover') {
+                init();
+                gameState = 'waiting';
+                gameLoop();
+            } else if (e.code === 'Escape' && gameState === 'gameover') {
+                window.close();
+            } else if (e.code === 'KeyM' && gameState === 'playing' && !player.dead) {
+                bullets.push({ x: player.x + 40, y: player.y + 30, speed: gameSpeed * 3 });
+                shootTimer = 30;
+            } else if (e.code === 'KeyC' && gameState === 'waiting') {
+                window.location.href = 'index.html';
+            }
+        });
+
+        document.getElementById('jumpButton').addEventListener('click', () => simulateKeyPress('Space'));
+        document.getElementById('shootButton').addEventListener('click', () => simulateKeyPress('KeyM'));
+        document.getElementById('button1').addEventListener('click', () => simulateKeyPress('Digit1'));
+        document.getElementById('button2').addEventListener('click', () => simulateKeyPress('Digit2'));
+        document.getElementById('buttonG').addEventListener('click', () => simulateKeyPress('KeyG'));
+
+        function respawn() {
+            let nextPlatform = platforms.find(p => p.x > 0) || platforms[0];
+            if (nextPlatform) {
+                const shift = -nextPlatform.x + 20;
+                platforms.forEach(p => p.x += shift);
+                coins.forEach(c => c.x += shift);
+                bullets.forEach(b => b.x += shift);
+                enemies.forEach(e => e.x += shift);
+                arrows.forEach(a => a.x += shift);
+                player.x = 20;
+                player.y = nextPlatform.y - player.height;
+                player.speedY = 0;
+                player.jumping = false;
+                player.doubleJump = false;
+                player.dead = false;
+                player.deathType = null;
+                delete nextPlatform.triangle;
+                if (nextPlatform.enemy) {
+                    delete nextPlatform.enemy;
+                    enemies = [];
+                }
+            }
+        }
+
+        function drawPlayer(includeHair = true) {
+            ctx.fillStyle = player.dead ? '#800' : '#0f0';
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(player.x, player.y + 10, 8, 4);
+            ctx.fillRect(player.x + 8, player.y + 10, 14, 8);
+            ctx.fillRect(player.x + 22, player.y + 10, 3, 4);
+            ctx.fillRect(player.x + 25, player.y + 10, 14, 8);
+            if (shootTimer > 0) {
+                ctx.fillStyle = '#555';
+                ctx.beginPath();
+                ctx.moveTo(player.x + player.width, player.y + player.height - 10);
+                ctx.lineTo(player.x + player.width + 10, player.y + player.height - 10);
+                ctx.lineTo(player.x + player.width + 10, player.y + player.height);
+                ctx.lineTo(player.x + player.width - 5, player.y + player.height);
+                ctx.fill();
+                ctx.fillRect(player.x + player.width - 10, player.y + player.height - 10, 5, 10);
+            } else {
+                ctx.fillRect(player.x + 15, player.y + 25, 15, 5);
+            }
+            if (includeHair) {
+                ctx.fillStyle = player.dead ? '#800' : '#0f0';
+                for (let i = 0; i < 5; i++) {
+                    ctx.fillRect(player.x + 5 + i * 8, player.y - 3, 3, 3);
+                }
+            }
+        }
+
+        function drawLava() {
+            const tileSize = 20;
+            const borderWidth = 2; // Border thickness from #gameSegment
+            const lavaWidth = canvas.width - (4 * borderWidth); // Canvas width minus left and right borders
+            lavaTimer++;
+            const swap = lavaTimer % 60 < 30;
+            for (let x = borderWidth-2; x < lavaWidth; x += tileSize) { // Start at left border, end before right border
+                for (let y = canvas.height - LAVA_HEIGHT; y < canvas.height; y += tileSize) {
+                    const isOdd = Math.floor((x - borderWidth) / tileSize + y / tileSize) % 2 === 0;
+                    ctx.fillStyle = (isOdd !== swap) ? '#ff8c00' : '#e07b00';
+                    ctx.fillRect(x, y, tileSize, tileSize);
+                }
+            }
+        }
+
+        function drawTriangle(x, y) {
+            ctx.fillStyle = '#0000ff';
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + 10, y - 20);
+            ctx.lineTo(x + 20, y);
+            ctx.fill();
+        }
+
+        function drawArrow(x, y) {
+            ctx.fillStyle = '#ff0000';
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + 20, y - 10);
+            ctx.lineTo(x + 20, y + 10);
+            ctx.fill();
+        }
+
+        function drawBullet(x, y) {
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(x, y - 2, 10, 4);
+        }
+
+        function drawEnemy(x, y) {
+            ctx.fillStyle = '#800080';
+            ctx.beginPath();
+            ctx.moveTo(x + 10, y);
+            ctx.lineTo(x + 20, y - 10);
+            ctx.lineTo(x + 30, y);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(x + 10, y);
+            ctx.lineTo(x, y - 10);
+            ctx.lineTo(x + 10, y);
+            ctx.fill();
+            ctx.fillRect(x, y - 40, 40, 30);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(x + 12, y - 35, 4, 4);
+            ctx.fillRect(x + 24, y - 35, 4, 4);
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.fillStyle = '#ff0';
+            ctx.font = "20px 'Press Start 2P'";
+            ctx.textAlign = 'center';
+            ctx.fillText(playerName, 400, 30);
+            ctx.restore();
+
+            drawLava();
+            drawPlayer(gameState !== 'waiting');
+
+            platforms.forEach(p => {
+                ctx.fillStyle = p.touched ? '#fff' : '#ccc';
+                ctx.fillRect(p.x, p.y, p.width, p.height);
+                if (p.triangle && difficulty >= 3) drawTriangle(p.x + p.triangle.x, p.y);
+            });
+
+            coins.forEach(c => {
+                if (!c.collected) {
+                    ctx.fillStyle = '#ffff00';
+                    ctx.beginPath();
+                    ctx.arc(c.x, c.y, c.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.font = "12px 'Press Start 2P'";
+                    ctx.fillStyle = '#ffa500';
+                    ctx.fillText('1', c.x - 3, c.y + 4);
+                }
+            });
+
+            bullets.forEach(b => drawBullet(b.x, b.y));
+            enemies.forEach(e => drawEnemy(e.x, e.y));
+            arrows.forEach(a => drawArrow(a.x, a.y));
+
+            if (gameState === 'waiting') {
+                ctx.font = "20px 'Press Start 2P'";
+                ctx.fillStyle = '#ff0';
+                ctx.fillText('START BY PRESSING SPACE', 200, 200);
+                ctx.font = "14px 'Press Start 2P'";
+                ctx.fillText('JUMP = SPACE, SHOOT = M', 260, 240);
+                ctx.fillText('CHANGE USER = C', 260, 280);
+            } else if (gameState === 'countdown') {
+                ctx.font = "40px 'Press Start 2P'";
+                ctx.fillStyle = '#ff0';
+                ctx.fillText(Math.ceil(countdown / 60), 380, 200);
+                countdown -= 60;
+                if (countdown <= 0) gameState = 'playing';
+            } else if (gameState === 'respawn') {
+                if (deathTimer > 0) {
+                    deathTimer--;
+                } else {
+                    if (!player.dead) {
+                        ctx.font = "20px 'Press Start 2P'";
+                        ctx.fillStyle = '#ff0';
+                        ctx.fillText('JATKA PAINAMALLA SPACE', 150, 200);
+                    } else {
+                        respawn();
+                    }
+                }
+            } else if (gameState === 'playing') {
+                player.speedY += gravity;
+                player.y += player.speedY;
+
+                if (shootTimer > 0) shootTimer--;
+                if (enemyHitTimer > 0) {
+                    ctx.fillStyle = '#888';
+                    ctx.fillRect(enemyHitX - 10, 0, 20, 5);
+                    ctx.fillStyle = '#f00';
+                    ctx.fillRect(enemyHitX - 5, 0, 10, 5);
+                    enemyHitTimer--;
+                }
+
+                enemyShootTimer++;
+                if (difficulty >= 5 && enemies.length > 0) {
+                    enemies.forEach(e => {
+                        if (e.x + 40 > 0 && e.x < canvas.width) {
+                            if (enemyShootTimer >= 120) {
+                                arrows.push({ x: e.x + 40, y: e.y - 10 });
+                                enemyShootTimer = 0;
+                            }
+                        }
+                    });
+                }
+
+                platforms.forEach(p => {
+                    p.x -= gameSpeed;
+                    if (player.x < p.x + p.width && player.x + player.width > p.x &&
+                        player.y + player.height > p.y && player.y + player.height < p.y + p.height &&
+                        player.speedY > 0) {
+                        player.y = p.y - player.height;
+                        player.speedY = 0;
+                        player.jumping = false;
+                        player.doubleJump = false;
+                        if (!p.touched) {
+                            p.touched = true;
+                            levelCount++;
+                        }
+                    }
+                    if (p.triangle && difficulty >= 3 &&
+                        player.x + player.width > p.x + p.triangle.x &&
+                        player.x < p.x + p.triangle.x + 20 &&
+                        player.y + player.height > p.y - 20) {
+                        lives--;
+                        livesElement.textContent = `ELÄMÄT: ${lives}`;
+                        music.pause();
+                        player.dead = true;
+                        player.deathType = 'triangle';
+                        deathTimer = 120;
+                        gameState = 'respawn';
+                        if (lives <= 0) {
+                            gameState = 'gameover';
+                            saveHighScore();
+                        }
+                        return;
+                    }
+                });
+
+                coins.forEach((c, i) => {
+                    c.x -= gameSpeed;
+                    if (!c.collected && 
+                        player.x < c.x + c.radius && player.x + player.width > c.x - c.radius &&
+                        player.y < c.y + c.radius && player.y + player.height > c.y - c.radius) {
+                        c.collected = true;
+                        const currentCoins = parseInt(scoreElement.textContent.split(': ')[1]) + 1;
+                        scoreElement.textContent = `KOLIKOT: ${currentCoins}`;
+                        coinAnimationTimer = 30;
+                    }
+                });
+
+                bullets.forEach((b, i) => {
+                    b.x += b.speed;
+                    if (b.x > canvas.width) bullets.splice(i, 1);
+                });
+
+                enemies.forEach((e, i) => {
+                    e.x -= gameSpeed;
+                    if (player.x < e.x + 40 && player.x + player.width > e.x &&
+                        player.y < e.y && player.y + player.height > e.y - 70) {
+                        lives--;
+                        livesElement.textContent = `ELÄMÄT: ${lives}`;
+                        music.pause();
+                        player.dead = true;
+                        player.deathType = 'enemy';
+                        deathTimer = 120;
+                        gameState = 'respawn';
+                        if (lives <= 0) {
+                            gameState = 'gameover';
+                            saveHighScore();
+                        }
+                        return;
+                    }
+                    bullets.forEach((b, j) => {
+                        if (b.x < e.x + 40 && b.x + 10 > e.x &&
+                            b.y < e.y && b.y + 4 > e.y - 70) {
+                            enemyHitTimer = 30;
+                            enemyHitX = e.x + 20;
+                            enemies.splice(i, 1);
+                            bullets.splice(j, 1);
+                            return;
+                        }
+                    });
+                });
+
+                arrows.forEach((a, i) => {
+                    a.x -= gameSpeed * 2;
+                    if (a.x + 20 < 0) arrows.splice(i, 1);
+                    if (player.x < a.x + 20 && player.x + player.width > a.x &&
+                        player.y < a.y + 10 && player.y + player.height > a.y - 10) {
+                        lives--;
+                        livesElement.textContent = `ELÄMÄT: ${lives}`;
+                        music.pause();
+                        player.dead = true;
+                        player.deathType = 'arrow';
+                        deathTimer = 120;
+                        gameState = 'respawn';
+                        arrows = [];
+                        if (lives <= 0) {
+                            gameState = 'gameover';
+                            saveHighScore();
+                        }
+                        return;
+                    }
+                });
+
+                if (coinAnimationTimer > 0) {
+                    coinBonusElement.style.display = 'block';
+                    coinAnimationTimer--;
+                    if (coinAnimationTimer <= 0) coinBonusElement.style.display = 'none';
+                }
+
+                platforms = platforms.filter(p => p.x + p.width > -200);
+                if (platforms[platforms.length - 1].x < 600) {
+                    const lastPlatform = platforms[platforms.length - 1];
+                    const lastHeightIndex = HEIGHT_LEVELS.indexOf(lastPlatform.y);
+                    const direction = Math.random() > 0.5 ? 1 : -1;
+                    const heightChange = direction === 1 ? Math.min(3, Math.floor(Math.random() * 4)) : -Math.min(4, Math.floor(Math.random() * 5));
+                    const newHeightIndex = Math.max(0, Math.min(3, lastHeightIndex - heightChange));
+                    const newY = HEIGHT_LEVELS[newHeightIndex];
+                    const gap = getGap(heightChange, difficulty);
+                    const width = PLATFORM_LENGTHS[Math.floor(Math.random() * PLATFORM_LENGTHS.length)];
+
+                    const newPlatform = { x: lastPlatform.x + lastPlatform.width + gap, y: newY, width: width, height: 50, type: Math.floor(Math.random() * 3) + 1, touched: false };
+
+                    if (difficulty >= 3 && Math.random() > 0.7) {
+                        newPlatform.triangle = { x: 40 + Math.random() * (width - 80) };
+                    }
+
+                    if (difficulty >= 4 && !newPlatform.triangle && Math.random() > 0.5) {
+                        newPlatform.enemy = { x: width === 150 ? width - 40 : 40 + Math.random() * (width - 80) };
+                        enemies.push({ x: newPlatform.x + newPlatform.enemy.x, y: newPlatform.y });
+                    }
+
+                    platforms.push(newPlatform);
+
+                    levelProgress++;
+                    if (levelProgress % 10 === 0 && difficulty < 10) {
+                        difficulty++;
+                        levelChangeTimer = 120;
+                    }
+
+                    if (Math.random() > 0.5) {
+                        coins.push({ x: lastPlatform.x + lastPlatform.width + gap + width / 2, y: newY - 30, radius: 15, collected: false });
+                    }
+                }
+
+                if (player.y + player.height > canvas.height - LAVA_HEIGHT) {
+                    lives--;
+                    livesElement.textContent = `ELÄMÄT: ${lives}`;
+                    music.pause();
+                    player.dead = true;
+                    player.deathType = 'lava';
+                    deathTimer = 120;
+                    gameState = 'respawn';
+                    if (lives <= 0) {
+                        gameState = 'gameover';
+                        saveHighScore();
+                    }
+                }
+
+                if (levelChangeTimer > 0) {
+                    ctx.font = "30px 'Press Start 2P'";
+                    ctx.fillStyle = '#ff0';
+                    ctx.fillText(`LEVEL ${difficulty}`, 350, 200);
+                    levelChangeTimer--;
+                }
+            }
+
+            if (gameState !== 'gameover') {
+                requestAnimationFrame(gameLoop);
+            } else {
+                drawGameOver();
+            }
+        }
+
+        init();
+        gameLoop();
+    </script>
+</body>
+</html>
