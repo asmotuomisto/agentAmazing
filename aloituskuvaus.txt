@@ -1,0 +1,54 @@
+
+
+Tehdään tasohyppelypeli.
+
+Pelin mekaniikka:
+
+Pelihahmo on neonvihreä hahmo (neliö) jolla on kaksi silmää ja suu (mustat).
+
+Pelihahmo voi hypätä kerran (välilyönti) tai kaksi kertaa (tuplavälilyönti).
+
+Maailma juoksee oikealta vasemmalle ja pelaaja hyppii tasoilta toisille.
+
+Peli alkaa siten, että pelaaja on aloitustason vasemmalla reunalla ja ruudulla on teksti "paina välilyöntiä".
+Kun pelaaja painaa välilyöntiä lasketaan 3, 2, 1 ja peli alkaa. Lukujen vaihto kestää sekunnin.
+
+Ensimmäinen taso on aina vähintään 800px.
+
+Tasoja on neljällä eri korkeudella. Ensimmäinen taso on korkeudella 1.
+
+Tasot ovat kolmea eri pituutta. Lyhyt, keskipitkä ja pitkä.
+
+Tasojen välinen vaihtelu voi olla maksimissaan kolme tasoa ylöspäin ja neljä alaspäin.
+
+Aluksi lasketaan maksimipituudet mahdollisille tasojen väleille kaikille eri kokeusvaihteluille jotka ovat käytössä.
+
+Maksimipituus eri tasovaihteluiden välillä saadaan kun lasketaan tuplapompun maksimi hyppypituus eri tasovaihteluille.
+
+Tasojen maksimiväli on korkeintaan 95% tuplahypyn maksimipituudesta.
+
+
+Peli vaikeutuu aina kun pelaaja on edennyt 10 tasoa lisää. Vaikeustasoja on 10 ja peli alkaa helpoimmasta, vaikeustasosta 1. Tasot ovat väriltään vaalena harmaita, ja joka kymmenes on valkoinen.
+
+Pelin tausta on musta.
+
+
+Pelin alkuarvoihin lasketaan vaikeusparametrit eri vaikeustasoille: Maksimi tasovaihteluiden väli alkaen helpoimmasta max 40% ja päättyen vaikeimpaan 95%.
+
+
+
+
+Pelaajalla on kolme elämää. Pelaaja kuolee kun se tippuu rotkoon.
+
+Kun pelaaja kuolee, maailmaa kelataan eteenpäin ja pysäytetään siihen kohtaan kun seuraava taso on pelin vasemmassa reunassa. Pelaaja asetaan tämän tason päälle. Sitten näytetään teksti "Jatka painamalla välilyöntiä", jonka jälkeen lasketaan 3, 2, 1 ja peli jatkuu.
+
+Maailmassa on kolikkoja satunnaisesti eri tasojen päällä. Ne ovat pyöreitä ja keltaisia. Pelaaja kerää niitä osumalla niihin.
+
+Pelin oikessa yläkulmassa näkyy kerättyjen kolikoiden määrä, tyyliin KOLIKOT: X.
+
+Pelin vasemmassa yläkulmassa näkyy elämien määrä, ELÄMÄT: X.
+
+Tekstit ovat neonkeltaisella.
+
+
+
