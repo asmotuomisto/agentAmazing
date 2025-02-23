@@ -24,7 +24,6 @@
             <div id="coinBonus">+1</div>
             <audio id="backgroundMusic" loop>
                 <source src="https://www.dropbox.com/scl/fi/upcxw4uk264sf0qoednyh/rock_music.mp3?rlkey=av9766gj2vpvas4kzmyhkjc24&st=d545g0kq&dl=1" type="audio/mpeg">
-                <!-- <source src="https://drive.google.com/file/d/1VlSpndducpCFooSSjo-YlwwCQU5mM1vS/view" type="audio/mpeg"> -->
                 <!-- <source src="rock_music.mp3" type="audio/mpeg"> -->
                 <!-- Replace with a valid URL to your rock_music.mp3 file -->
             </audio>
@@ -63,11 +62,11 @@
         let lives = 3, gameSpeed = 3, gravity = 0.5;
         let platforms = [], coins = [], bullets = [], enemies = [], gameState = 'playerSelect', countdown = 0;
         let difficultyLevel = 1, levelProgress = 0, levelCount = 0, coinAnimationTimer = 0, lavaTimer = 0;
-        let deathTimer = 0, levelChangeTimer = 0, shootTimer = 0, enemyHitTimer = 0, enemyHitX = 0;
+        let deathTimer = 0, levelChangeTimer = 0, shootTimer = 0, enemyHitTimer = 0, enemyHitX = 0, enemyShootTimer = 0;
         let playerName = '';
         let highScores = JSON.parse(localStorage.getItem('highScores')) || [];
         let arrows = [];
-        let lastPlatformHadTriangle = false;
+        let lastPlatformHadTriangle = false, lastPlatformHadRectangle = false, lastPlatformHadEnemy = false;
 
         const HEIGHT_LEVELS = [350, 300, 250, 200];
         const PLATFORM_LENGTHS = [150, 200, 250];
@@ -97,7 +96,10 @@
             levelChangeTimer = 0;
             shootTimer = 0;
             enemyHitTimer = 0;
+            enemyShootTimer = 0;
             lastPlatformHadTriangle = false;
+            lastPlatformHadRectangle = false;
+            lastPlatformHadEnemy = false;
             player.x = 20;
             player.y = 350 - 40;
             player.speedY = 0;
@@ -189,7 +191,7 @@
                 gameLoop();
             } else if (e.code === 'Escape' && gameState === 'gameover') {
                 window.close();
-            } else if (e.code === 'ArrowRight' && gameState === 'playing' && !player.dead) {
+            } else if (e.code === 'KeyM' && gameState === 'playing' && !player.dead) {
                 bullets.push({
                     x: player.x + player.width,
                     y: player.y + player.height - 10,
@@ -223,6 +225,9 @@
                 player.deathType = null;
                 if (nextPlatform.triangle) {
                     delete nextPlatform.triangle;
+                }
+                if (nextPlatform.rectangle) {
+                    delete nextPlatform.rectangle;
                 }
             }
         }
@@ -280,6 +285,11 @@
             ctx.fill();
         }
 
+        function drawRectangle(x, y) {
+            ctx.fillStyle = 'blue';
+            ctx.fillRect(x, y - 20, 20, 20);
+        }
+
         function drawArrow(x, y) {
             ctx.fillStyle = 'red';
             ctx.beginPath();
@@ -296,7 +306,7 @@
 
         function drawEnemy(x, y) {
             // Feet on platform surface (bottom of feet at y)
-            ctx.fillStyle = '#4B0082'; // Dark purple
+            ctx.fillStyle = '#800080'; // Purple
             ctx.beginPath();
             ctx.moveTo(x + 10, y); // Bottom of left foot
             ctx.lineTo(x + 20, y - 10); // Upward point
@@ -307,7 +317,7 @@
             ctx.lineTo(x, y - 10); // Upward point
             ctx.lineTo(x + 10, y); // Back to base
             ctx.fill();
-            // Torso (40px wide, taller square, 40x30 instead of 20)
+            // Torso (40px wide, taller square, 40x30)
             ctx.fillRect(x, y - 40, 40, 30);
             // Eyes (black squares inside torso)
             ctx.fillStyle = '#000';
@@ -326,6 +336,9 @@
                 ctx.fillRect(p.x, p.y, p.width, p.height);
                 if (p.triangle && difficultyLevel >= 3) {
                     drawTriangle(p.x + p.triangle.x, p.y);
+                }
+                if (p.rectangle && difficultyLevel >= 3) {
+                    drawRectangle(p.x + p.rectangle.x, p.y);
                 }
             });
 
@@ -350,6 +363,8 @@
                 ctx.fillStyle = '#ff0';
                 ctx.fillText('PLAYER1 = PRESS 1', 250, 200);
                 ctx.fillText('PLAYER2 = PRESS 2', 250, 240);
+                ctx.fillText('JUMP = SPACE', 250, 280);
+                ctx.fillText('SHOOT = M', 250, 320);
             }
             else if (gameState === 'waiting') {
                 ctx.font = "20px 'Press Start 2P'";
@@ -389,6 +404,18 @@
                     enemyHitTimer--;
                 }
 
+                enemyShootTimer++;
+                if (difficultyLevel >= 5 && enemies.length > 0) {
+                    enemies.forEach(e => {
+                        if (e.x + 40 > 0 && e.x < canvas.width) { // Enemy is on screen
+                            if (enemyShootTimer >= 120) { // Shoot every 2 seconds (120 frames at ~60 FPS)
+                                arrows.push({ x: e.x + 40, y: e.y - 10 });
+                                enemyShootTimer = 0; // Reset timer
+                            }
+                        }
+                    });
+                }
+
                 platforms.forEach(p => {
                     p.x -= gameSpeed;
                     if (player.x < p.x + p.width &&
@@ -414,6 +441,23 @@
                         music.pause();
                         player.dead = true;
                         player.deathType = 'triangle';
+                        deathTimer = 120;
+                        gameState = 'respawn';
+                        if (lives <= 0) {
+                            gameState = 'gameover';
+                            saveHighScore();
+                        }
+                        return;
+                    }
+                    if (p.rectangle && difficultyLevel >= 3 &&
+                        player.x + player.width > p.x + p.rectangle.x &&
+                        player.x < p.x + p.rectangle.x + 20 &&
+                        player.y + player.height > p.y - 20) {
+                        lives--;
+                        livesElement.textContent = `ELÄMÄT: ${lives}`;
+                        music.pause();
+                        player.dead = true;
+                        player.deathType = 'rectangle';
                         deathTimer = 120;
                         gameState = 'respawn';
                         if (lives <= 0) {
@@ -448,7 +492,7 @@
                     if (player.x < e.x + 40 &&
                         player.x + player.width > e.x &&
                         player.y < e.y &&
-                        player.y + player.height > e.y - 70) { // Adjusted hitbox for taller torso
+                        player.y + player.height > e.y - 70) {
                         lives--;
                         livesElement.textContent = `ELÄMÄT: ${lives}`;
                         music.pause();
@@ -476,13 +520,8 @@
                     });
                 });
 
-                if (difficultyLevel >= 7 && arrows.length === 0 && Math.random() < 0.02) {
-                    const heights = [180, 280, 380];
-                    const y = heights[Math.floor(Math.random() * heights.length)];
-                    arrows.push({ x: 800, y: y });
-                }
                 arrows.forEach((a, i) => {
-                    a.x -= 4;
+                    a.x -= gameSpeed * 2; // Arrows move faster than platforms
                     if (a.x + 20 < 0) arrows.splice(i, 1);
                     if (player.x < a.x + 20 &&
                         player.x + player.width > a.x &&
@@ -533,31 +572,28 @@
                         touched: false
                     };
 
+                    let hasObstacle = false;
                     if (difficultyLevel >= 3 && Math.random() > 0.7) {
-                        if (difficultyLevel < 5 && !lastPlatformHadTriangle) {
+                        if (difficultyLevel < 4 || (!lastPlatformHadEnemy && !lastPlatformHadRectangle)) {
                             newPlatform.triangle = { x: 40 + Math.random() * (width - 80) };
                             lastPlatformHadTriangle = true;
-                        } else if (difficultyLevel >= 5) {
-                            if (lastPlatform.triangle && lastPlatform.triangle.x > lastPlatform.width / 2) {
-                                newPlatform.width = widthOptions[Math.floor(Math.random() * 2) + 1];
-                                if (Math.random() > 0.4) {
-                                    newPlatform.triangle = { x: 40 + Math.random() * (newPlatform.width - 80) };
-                                    if (newPlatform.triangle.x < 40) newPlatform.triangle.x = 40;
-                                }
-                                lastPlatformHadTriangle = newPlatform.triangle ? true : false;
-                            } else if (!lastPlatformHadTriangle || Math.random() > 0.3) {
-                                newPlatform.triangle = { x: 40 + Math.random() * (width - 80) };
-                                lastPlatformHadTriangle = true;
-                            } else {
-                                lastPlatformHadTriangle = false;
-                            }
+                            hasObstacle = true;
+                        } else if (difficultyLevel >= 4 && Math.random() > 0.5 && !lastPlatformHadEnemy && !lastPlatformHadTriangle) {
+                            newPlatform.rectangle = { x: 40 + Math.random() * (width - 80) };
+                            lastPlatformHasRectangle = true;
+                            hasObstacle = true;
                         }
                     } else {
                         lastPlatformHadTriangle = false;
+                        lastPlatformHadRectangle = false;
                     }
 
-                    if (difficultyLevel >= 4 && (newPlatform.width === 200 || newPlatform.width === 250) && Math.random() > 0.5) {
-                        enemies.push({ x: newPlatform.x + 40 + Math.random() * (newPlatform.width - 80), y: newPlatform.y });
+                    if (difficultyLevel >= 4 && !hasObstacle && Math.random() > 0.5 && !lastPlatformHadTriangle && !lastPlatformHadRectangle) {
+                        newPlatform.enemy = { x: 40 + Math.random() * (width - 80) };
+                        enemies.push({ x: newPlatform.x + newPlatform.enemy.x, y: newPlatform.y });
+                        lastPlatformHadEnemy = true;
+                    } else {
+                        lastPlatformHadEnemy = false;
                     }
 
                     platforms.push(newPlatform);
